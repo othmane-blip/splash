@@ -21,11 +21,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
 
   async function handleScrape() {
     setError("");
-    const token = storage.getApifyToken();
-    if (!token) {
-      setError("Apify API token not set. Go to Settings first.");
-      return;
-    }
+    const token = storage.getApifyToken(); // optional — server has env var fallback
     if (profiles.length === 0) {
       setError("No profiles configured. Go to Profiles first.");
       return;
@@ -40,7 +36,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apifyToken: token,
+          apifyToken: token || "",
           profileUrls: profiles.map((p) => p.linkedin_url),
           maxPosts: 20,
         }),
@@ -60,7 +56,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
         await new Promise((r) => setTimeout(r, 5000));
         attempts++;
 
-        const statusRes = await fetch(`/api/scrape-status?runId=${runId}&apifyToken=${encodeURIComponent(token)}`);
+        const statusRes = await fetch(`/api/scrape-status?runId=${runId}&apifyToken=${encodeURIComponent(token || "")}`);
         const statusData = await statusRes.json();
 
         if (statusData.status === "SUCCEEDED") {
@@ -82,11 +78,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
 
   async function handleAnalyze() {
     setError("");
-    const apiKey = storage.getAnthropicKey();
-    if (!apiKey) {
-      setError("Anthropic API key not set. Go to Settings first.");
-      return;
-    }
+    const apiKey = storage.getAnthropicKey(); // optional — server has env var fallback
 
     const topPosts = getTopPosts();
     if (topPosts.length === 0) {
@@ -99,7 +91,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anthropicKey: apiKey, posts: topPosts }),
+        body: JSON.stringify({ anthropicKey: apiKey || "", posts: topPosts }),
       });
 
       if (!res.ok) {

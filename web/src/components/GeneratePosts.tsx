@@ -23,11 +23,7 @@ export function GeneratePosts({ posts, patterns, userContext, generatedPosts, se
 
   async function handleGenerate() {
     setError("");
-    const apiKey = storage.getAnthropicKey();
-    if (!apiKey) {
-      setError("Anthropic API key not set. Go to Settings.");
-      return;
-    }
+    const apiKey = storage.getAnthropicKey(); // optional — server has env var fallback
 
     const topPosts = [...posts]
       .sort((a, b) => b.engagement_score - a.engagement_score)
@@ -39,7 +35,7 @@ export function GeneratePosts({ posts, patterns, userContext, generatedPosts, se
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          anthropicKey: apiKey,
+          anthropicKey: apiKey || "",
           patterns,
           topPosts,
           userContext,
