@@ -2,19 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { storage } from "@/lib/storage";
-import { LinkedInProfile, LinkedInPost, PostPatterns, UserContext, GeneratedPost } from "@/lib/types";
+import { LinkedInProfile, LinkedInPost, PostPatterns, UserContext } from "@/lib/types";
 import { Settings } from "@/components/Settings";
 import { ConfigureProfiles } from "@/components/ConfigureProfiles";
 import { ScrapeAnalyze } from "@/components/ScrapeAnalyze";
-import { Interview } from "@/components/Interview";
-import { GeneratePosts } from "@/components/GeneratePosts";
+import { Chat } from "@/components/Chat";
 
 const TABS = [
-  { id: "settings", label: "Settings", icon: "gear" },
-  { id: "profiles", label: "1. Profiles", icon: "users" },
-  { id: "scrape", label: "2. Scrape & Analyze", icon: "chart" },
-  { id: "interview", label: "3. About You", icon: "user" },
-  { id: "generate", label: "4. Generate", icon: "sparkle" },
+  { id: "settings", label: "Settings" },
+  { id: "profiles", label: "1. Profiles" },
+  { id: "scrape", label: "2. Scrape & Analyze" },
+  { id: "chat", label: "3. Chat & Generate" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -25,7 +23,6 @@ export default function Home() {
   const [posts, setPosts] = useState<LinkedInPost[]>([]);
   const [patterns, setPatterns] = useState<PostPatterns | null>(null);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
-  const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Load from localStorage on mount
@@ -34,7 +31,6 @@ export default function Home() {
     setPosts(storage.getPosts());
     setPatterns(storage.getPatterns());
     setUserContext(storage.getUserContext());
-    setGeneratedPosts(storage.getGeneratedPosts());
     setLoaded(true);
   }, []);
 
@@ -43,7 +39,6 @@ export default function Home() {
   useEffect(() => { if (loaded) storage.setPosts(posts); }, [posts, loaded]);
   useEffect(() => { if (loaded && patterns) storage.setPatterns(patterns); }, [patterns, loaded]);
   useEffect(() => { if (loaded && userContext) storage.setUserContext(userContext); }, [userContext, loaded]);
-  useEffect(() => { if (loaded) storage.setGeneratedPosts(generatedPosts); }, [generatedPosts, loaded]);
 
   if (!loaded) {
     return (
@@ -85,13 +80,12 @@ export default function Home() {
           <StatusDot ok={posts.length > 0} label={`${posts.length} posts scraped`} />
           <StatusDot ok={patterns !== null} label={patterns ? "Patterns analyzed" : "Not analyzed"} />
           <StatusDot ok={userContext !== null} label={userContext ? "Profile saved" : "Not set"} />
-          <StatusDot ok={generatedPosts.length > 0} label={`${generatedPosts.length} posts generated`} />
         </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-8">
+        <div className="max-w-4xl mx-auto p-8 h-full">
           {tab === "settings" && <Settings />}
           {tab === "profiles" && <ConfigureProfiles profiles={profiles} setProfiles={setProfiles} />}
           {tab === "scrape" && (
@@ -103,14 +97,12 @@ export default function Home() {
               setPatterns={setPatterns}
             />
           )}
-          {tab === "interview" && <Interview userContext={userContext} setUserContext={setUserContext} />}
-          {tab === "generate" && (
-            <GeneratePosts
+          {tab === "chat" && (
+            <Chat
               posts={posts}
               patterns={patterns}
               userContext={userContext}
-              generatedPosts={generatedPosts}
-              setGeneratedPosts={setGeneratedPosts}
+              setUserContext={setUserContext}
             />
           )}
         </div>
