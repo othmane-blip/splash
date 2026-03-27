@@ -14,6 +14,7 @@ interface Props {
 export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
+  const [maxPosts, setMaxPosts] = useState(20);
   const [topN, setTopN] = useState(5);
   const [error, setError] = useState("");
 
@@ -26,7 +27,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
     }
 
     setScraping(true);
-    setScrapeStatus("Starting Apify scraper...");
+    setScrapeStatus(`Scraping up to ${maxPosts} posts from ${profiles.length} profile(s)...`);
 
     try {
       const startRes = await fetch("/api/scrape", {
@@ -35,7 +36,7 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
         body: JSON.stringify({
           apifyToken: token || "",
           profileUrls: profiles.map((p) => p.linkedin_url),
-          maxPosts: 20,
+          maxPosts,
         }),
       });
 
@@ -80,6 +81,8 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
       .slice(0, topN);
   }
 
+  // Group posts by author for stats
+  const authors = [...new Set(posts.map((p) => p.author_name))];
   const avgLikes = posts.length ? Math.round(posts.reduce((s, p) => s + p.likes, 0) / posts.length) : 0;
   const avgComments = posts.length ? Math.round(posts.reduce((s, p) => s + p.comments, 0) / posts.length) : 0;
   const avgShares = posts.length ? Math.round(posts.reduce((s, p) => s + p.shares, 0) / posts.length) : 0;
@@ -99,6 +102,24 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
         <p className="text-sm text-gray-500 mb-4">
           {profiles.length} profile(s): {profiles.map((p) => p.name || p.linkedin_url).join(", ")}
         </p>
+
+        {/* Posts per profile config */}
+        <div className="flex items-center gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+          <label className="text-sm text-gray-600 whitespace-nowrap">Posts per profile:</label>
+          <select
+            value={maxPosts}
+            onChange={(e) => setMaxPosts(Number(e.target.value))}
+            disabled={scraping}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>{n} posts</option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-400">
+            = up to {maxPosts * profiles.length} total from {profiles.length} profile(s)
+          </span>
+        </div>
 
         <button
           onClick={handleScrape}
@@ -126,16 +147,22 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
             <Stat label="Avg Shares" value={avgShares} />
           </div>
 
+          {authors.length > 1 && (
+            <div className="mb-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-500">
+              Posts from: {authors.join(", ")} — sorted by engagement across all profiles
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-3">Step 2: Select Top Posts</h3>
-            <p className="text-sm text-gray-500 mb-4">These will be sent to Claude for analysis in the chat.</p>
+            <h3 className="text-lg font-semibold mb-3">Step 2: Select Top Posts for Claude</h3>
+            <p className="text-sm text-gray-500 mb-4">Pick how many top posts to send. Ranked by engagement (likes + 2x comments + 3x shares).</p>
 
             <div className="flex items-center gap-4 mb-4">
               <label className="text-sm text-gray-600">Send top</label>
               <input
                 type="range"
                 min={1}
-                max={Math.min(20, posts.length)}
+                max={Math.min(posts.length, 20)}
                 value={topN}
                 onChange={(e) => setTopN(Number(e.target.value))}
                 className="flex-1"
