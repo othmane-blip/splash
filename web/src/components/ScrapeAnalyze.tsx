@@ -60,8 +60,10 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
         const statusData = await statusRes.json();
 
         if (statusData.status === "SUCCEEDED") {
-          setScrapeStatus(`Done! Found ${statusData.posts.length} posts.`);
-          setPosts(statusData.posts);
+          const parsed = statusData.posts?.length || 0;
+          const raw = statusData.totalRawItems || "?";
+          setScrapeStatus(`Done! Found ${parsed} posts (${raw} raw items from Apify).`);
+          setPosts(statusData.posts || []);
           break;
         } else if (statusData.status === "FAILED" || statusData.status === "ABORTED") {
           throw new Error(`Scrape ${statusData.status.toLowerCase()}`);
