@@ -27,7 +27,14 @@ function set(key: string, value: unknown) {
 
 export const storage = {
   getProfiles: (): LinkedInProfile[] =>
-    get(KEYS.profiles, [{ name: "Dakota Robertson", linkedin_url: "https://www.linkedin.com/in/dakotarobertson/", category: "personal branding" }]),
+    get(KEYS.profiles, [
+      { name: "Dakota Robertson", linkedin_url: "https://www.linkedin.com/in/dakotarobertson/", category: "personal branding" },
+      { name: "Lara Acosta", linkedin_url: "https://www.linkedin.com/in/laraacostar/", category: "personal branding" },
+      { name: "Justin Welsh", linkedin_url: "https://www.linkedin.com/in/justinwelsh/", category: "solopreneurship" },
+      { name: "Hatice Sultan", linkedin_url: "https://www.linkedin.com/in/hatice-sultan-ghostwriter/", category: "ghostwriting" },
+      { name: "Jake Ward", linkedin_url: "https://www.linkedin.com/in/jakezward/", category: "content growth" },
+      { name: "Cameron Trew", linkedin_url: "https://www.linkedin.com/in/camerontrew/", category: "marketing" },
+    ]),
   setProfiles: (v: LinkedInProfile[]) => set(KEYS.profiles, v),
 
   getPosts: (): LinkedInPost[] => get(KEYS.posts, []),
