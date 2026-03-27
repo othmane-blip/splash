@@ -14,6 +14,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 load_dotenv()
 
+# Support Streamlit Cloud secrets (no .env file needed when deployed)
+# Users add secrets via Streamlit Cloud dashboard instead of local .env
+if hasattr(st, "secrets"):
+    for key in ["APIFY_API_TOKEN", "ANTHROPIC_API_KEY"]:
+        if key in st.secrets and key not in os.environ:
+            os.environ[key] = st.secrets[key]
+
 from linkedin_scraper.analyzer import filter_top_posts, get_engagement_summary
 from linkedin_scraper.ai_analyzer import analyze_post_patterns
 from linkedin_scraper.generator import generate_posts, save_generated_posts
