@@ -50,8 +50,13 @@ export default function Home() {
     <div className="flex h-screen">
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Ghost<span className="text-blue-600">Post</span></h1>
-          <p className="text-xs text-gray-500 mt-1">AI-powered LinkedIn ghostwriter</p>
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.svg" alt="GhostPost" className="w-7 h-7" />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Ghost<span className="text-blue-600">Post</span></h1>
+              <p className="text-[10px] text-gray-400 -mt-0.5">AI-powered LinkedIn ghostwriter</p>
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
