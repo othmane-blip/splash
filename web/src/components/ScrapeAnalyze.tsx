@@ -155,6 +155,14 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
       {/* Stats */}
       {posts.length > 0 && (
         <>
+          {/* Debug: raw keys from first post */}
+          {posts[0]?._raw_keys && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-xs">
+              <p className="font-semibold mb-1">Debug: Apify raw field names</p>
+              <code className="break-all">{posts[0]._raw_keys.join(", ")}</code>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-4 mb-6">
             <Stat label="Total Posts" value={posts.length} />
             <Stat label="Avg Likes" value={avgLikes} />

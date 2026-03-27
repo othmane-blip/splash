@@ -74,7 +74,14 @@ function parseApifyPost(item: Record<string, unknown>) {
     const reactionTypes: Record<string, number> = {};
     let totalLikes = 0;
 
-    const reactionCounts = item.reactionTypeCounts || item.reactions || item.reactionCounts;
+    // Try multiple possible locations for reaction data
+    const reactionCounts =
+      item.reactionTypeCounts ||
+      item.reactions ||
+      item.reactionCounts ||
+      (item.socialContent as Record<string, unknown>)?.reactionTypeCounts ||
+      (item.socialCounts as Record<string, unknown>)?.reactionTypeCounts;
+
     if (Array.isArray(reactionCounts)) {
       for (const r of reactionCounts as Array<Record<string, unknown>>) {
         const type = String(r.type || r.reactionType || "LIKE");
@@ -89,25 +96,55 @@ function parseApifyPost(item: Record<string, unknown>) {
       }
     }
 
-    // Fall back to simple likes count
+    // Fall back to simple likes/totalReactionCount fields
     if (totalLikes === 0) {
-      totalLikes = Number(item.likesCount || item.numLikes || item.likes || 0);
+      totalLikes = Number(
+        item.totalReactionCount ||
+        item.totalReactions ||
+        item.likesCount ||
+        item.numLikes ||
+        item.likes ||
+        item.numReactions ||
+        (item.socialContent as Record<string, unknown>)?.totalReactionCount ||
+        0
+      );
     }
 
     // Get post text - try multiple possible field names
     const text = String(
-      item.commentary || item.text || item.postText || item.content || item.body || item.message || ""
+      item.content || item.commentary || item.text || item.postText || item.body || item.message || ""
     );
 
-    // Determine media type
+    // Parse comments - try nested socialContent too
+    const socialContent = (item.socialContent || {}) as Record<string, unknown>;
+    const comments = Number(
+      item.numComments || item.commentsCount || item.comments ||
+      item.totalComments || socialContent.totalComments ||
+      socialContent.numComments || 0
+    );
+    const shares = Number(
+      item.numShares || item.sharesCount || item.shares ||
+      item.totalShares || socialContent.totalShares ||
+      socialContent.numShares || 0
+    );
+
+    // Determine media type and collect image URLs
     let mediaType = "text";
-    if (item.images) mediaType = "image";
-    else if (item.documents) mediaType = "document";
+    const imageUrls: string[] = [];
+    if (item.images && Array.isArray(item.images)) {
+      mediaType = "image";
+      for (const img of item.images as Array<Record<string, unknown>>) {
+        if (img.url) imageUrls.push(String(img.url));
+      }
+    } else if (item.image) {
+      mediaType = "image";
+      const img = item.image as Record<string, unknown>;
+      if (typeof img === "string") imageUrls.push(img);
+      else if (img.url) imageUrls.push(String(img.url));
+    }
+    if (item.documents) mediaType = "document";
     else if (item.video) mediaType = "video";
     else if (item.mediaType) mediaType = String(item.mediaType);
-
-    const comments = Number(item.numComments || item.commentsCount || item.comments || 0);
-    const shares = Number(item.numShares || item.sharesCount || item.shares || 0);
 
     return {
       author_name: authorName,
@@ -117,11 +154,17 @@ function parseApifyPost(item: Record<string, unknown>) {
       likes: totalLikes,
       comments,
       shares,
-      impressions: Number(item.numImpressions || item.impressions || item.views || 0),
+      impressions: Number(
+        item.numImpressions || item.impressions || item.views ||
+        socialContent.numImpressions || 0
+      ),
       media_type: mediaType,
       post_url: String(item.linkedinUrl || item.url || item.postUrl || item.link || ""),
       reaction_types: reactionTypes,
       engagement_score: totalLikes + 2 * comments + 3 * shares,
+      image_urls: imageUrls,
+      // Include raw keys for debugging
+      _raw_keys: Object.keys(item),
     };
   } catch {
     return null;
