@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 function buildSystemPrompt(
-  patterns: Record<string, unknown>,
   topPosts: Array<{ author_name: string; likes: number; comments: number; shares: number; text: string }>
 ): string {
   const postsText = topPosts
@@ -12,24 +11,23 @@ function buildSystemPrompt(
     )
     .join("");
 
-  return `You are my LinkedIn ghostwriter. I run an agency that generates leads for businesses using Facebook ads and outbound cold email campaigns. I share learnings to educate my audience on using AI and these tools to get leads and acquire clients.
+  return `I need your help writing LinkedIn posts for my personal brand. I run an agency that generates leads for businesses. We run Facebook ads. We run outbound cold email campaigns. And I'm sharing our learnings and to educate my audience to help them use AI and these tools to get leads and acquire clients for their business.
 
-Here are top performing posts from LinkedIn top voices, and an analysis of what's working. Use these patterns, structures, and hooks when writing posts for me.
+I am going to share with you top performing posts from top voices on LinkedIn, as well as some comments on what is working and not working in their posts. I need your help analyzing the posts to find the patterns, structures, and hooks that are working. So we can use these to our advantage when writing posts for my LinkedIn personal brand.
 
-## TOP PERFORMING POSTS
+I want you to ask me clarifying questions or questions around what I'm currently doing in my work, any insights, or anything you think might be important to help you decide what to write a post on.
+
+## TOP PERFORMING POSTS FROM LINKEDIN TOP VOICES
 ${postsText}
 
-## PATTERN ANALYSIS
-${JSON.stringify(patterns, null, 2)}
-
 ## HOW TO WORK WITH ME
-- I'll tell you what's top of mind — a result, a learning, a process, an opinion, something I've been doing lately
-- Your job is to immediately turn that into LinkedIn posts using the winning patterns above
-- Write 2-3 posts per topic I give you, each using a DIFFERENT hook and structure from the patterns
-- Don't interview me or ask generic questions. If you need something specific to write a better post, ask ONE targeted question
-- When I give you feedback, adjust and rewrite
+- Start by analyzing the posts above: what hooks, structures, formatting, and engagement patterns do you see? Give me a quick breakdown of what's working and how we could use it for our lead gen / AI / cold email content
+- Then ask me what's top of mind so we can start writing
+- When I give you a topic, result, or process — immediately write 2-3 posts using DIFFERENT hooks and structures from what you identified
+- Don't ask generic questions. If you need something specific to write a better post, ask ONE targeted question
+- When I give feedback, adjust and rewrite
 
-## RULES FOR THE POSTS
+## RULES FOR THE POSTS YOU WRITE
 - First 1-2 lines are everything — they show before "...see more". Make them stop the scroll
 - Short paragraphs, line breaks, punchy sentences
 - 150-300 words sweet spot
@@ -44,13 +42,9 @@ Label each post clearly: **Post 1:**, **Post 2:**, etc.
 After each post, one line on which pattern/hook you used.`;
 }
 
-const FIRST_MESSAGE = `I've studied the top posts and extracted the patterns that drive engagement. I'm ready to write.
-
-**What's top of mind for you right now?** Drop me a topic, a recent result, a process you've been using, or something you want to teach your audience — and I'll turn it into LinkedIn posts using the patterns that work.`;
-
 export async function POST(req: NextRequest) {
   try {
-    const { anthropicKey: clientKey, messages, patterns, topPosts } = await req.json();
+    const { anthropicKey: clientKey, messages, topPosts } = await req.json();
     const anthropicKey = clientKey || process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicKey) {
@@ -60,25 +54,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If this is the initial request (no user messages yet), return the first message
-    if (!messages || messages.length === 0) {
-      return new Response(JSON.stringify({ message: FIRST_MESSAGE }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const client = new Anthropic({ apiKey: anthropicKey });
-    const systemPrompt = buildSystemPrompt(patterns || {}, topPosts || []);
+    const systemPrompt = buildSystemPrompt(topPosts || []);
+
+    // For the initial request (no user messages), Claude's first message IS the analysis
+    const chatMessages = (!messages || messages.length === 0)
+      ? [{ role: "user" as const, content: "I've loaded the top performing posts above. Please analyze them — what patterns, hooks, structures, and engagement drivers do you see? Then tell me how we could leverage these for my lead gen / Facebook ads / cold email / AI content. Keep it concise and actionable." }]
+      : messages.map((m: { role: string; content: string | Array<Record<string, unknown>> }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
 
     // Stream the response
     const stream = await client.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       system: systemPrompt,
-      messages: messages.map((m: { role: string; content: string | Array<Record<string, unknown>> }) => ({
-        role: m.role,
-        content: m.content, // Pass through as-is (string or content blocks with images)
-      })),
+      messages: chatMessages,
     });
 
     // Return as a readable stream

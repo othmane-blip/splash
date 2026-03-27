@@ -11,7 +11,7 @@ import { Chat } from "@/components/Chat";
 const TABS = [
   { id: "settings", label: "Settings" },
   { id: "profiles", label: "1. Profiles" },
-  { id: "scrape", label: "2. Scrape & Analyze" },
+  { id: "scrape", label: "2. Scrape" },
   { id: "chat", label: "3. Chat & Generate" },
 ] as const;
 
@@ -21,24 +21,16 @@ export default function Home() {
   const [tab, setTab] = useState<TabId>("profiles");
   const [profiles, setProfiles] = useState<LinkedInProfile[]>([]);
   const [posts, setPosts] = useState<LinkedInPost[]>([]);
-  const [patterns, setPatterns] = useState<PostPatterns | null>(null);
-  const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
     setProfiles(storage.getProfiles());
     setPosts(storage.getPosts());
-    setPatterns(storage.getPatterns());
-    setUserContext(storage.getUserContext());
     setLoaded(true);
   }, []);
 
-  // Persist on change
   useEffect(() => { if (loaded) storage.setProfiles(profiles); }, [profiles, loaded]);
   useEffect(() => { if (loaded) storage.setPosts(posts); }, [posts, loaded]);
-  useEffect(() => { if (loaded && patterns) storage.setPatterns(patterns); }, [patterns, loaded]);
-  useEffect(() => { if (loaded && userContext) storage.setUserContext(userContext); }, [userContext, loaded]);
 
   if (!loaded) {
     return (
@@ -50,7 +42,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-blue-700">Splash</h1>
@@ -73,36 +64,26 @@ export default function Home() {
           ))}
         </nav>
 
-        {/* Status */}
         <div className="p-4 border-t border-gray-200 text-xs space-y-1.5">
           <div className="font-medium text-gray-500 uppercase tracking-wider mb-2">Pipeline Status</div>
           <StatusDot ok={profiles.length > 0} label={`${profiles.length} profiles`} />
           <StatusDot ok={posts.length > 0} label={`${posts.length} posts scraped`} />
-          <StatusDot ok={patterns !== null} label={patterns ? "Patterns analyzed" : "Not analyzed"} />
-          <StatusDot ok={userContext !== null} label={userContext ? "Profile saved" : "Not set"} />
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-8 h-full">
           {tab === "settings" && <Settings />}
           {tab === "profiles" && <ConfigureProfiles profiles={profiles} setProfiles={setProfiles} />}
           {tab === "scrape" && (
-            <ScrapeAnalyze
-              profiles={profiles}
-              posts={posts}
-              setPosts={setPosts}
-              patterns={patterns}
-              setPatterns={setPatterns}
-            />
+            <ScrapeAnalyze profiles={profiles} posts={posts} setPosts={setPosts} />
           )}
           {tab === "chat" && (
             <Chat
               posts={posts}
-              patterns={patterns}
-              userContext={userContext}
-              setUserContext={setUserContext}
+              patterns={null}
+              userContext={null}
+              setUserContext={() => {}}
             />
           )}
         </div>

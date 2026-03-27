@@ -1,27 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { LinkedInProfile, LinkedInPost, PostPatterns } from "@/lib/types";
+import { LinkedInProfile, LinkedInPost } from "@/lib/types";
 import { storage } from "@/lib/storage";
 
 interface Props {
   profiles: LinkedInProfile[];
   posts: LinkedInPost[];
   setPosts: (p: LinkedInPost[]) => void;
-  patterns: PostPatterns | null;
-  setPatterns: (p: PostPatterns) => void;
 }
 
-export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns }: Props) {
+export function ScrapeAnalyze({ profiles, posts, setPosts }: Props) {
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
   const [topN, setTopN] = useState(5);
   const [error, setError] = useState("");
 
   async function handleScrape() {
     setError("");
-    const token = storage.getApifyToken(); // optional — server has env var fallback
+    const token = storage.getApifyToken();
     if (profiles.length === 0) {
       setError("No profiles configured. Go to Profiles first.");
       return;
@@ -31,7 +28,6 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
     setScrapeStatus("Starting Apify scraper...");
 
     try {
-      // Start the scrape
       const startRes = await fetch("/api/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,7 +46,6 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
       const { runId } = await startRes.json();
       setScrapeStatus("Scraping posts... this takes 1-2 minutes.");
 
-      // Poll for completion
       let attempts = 0;
       while (attempts < 60) {
         await new Promise((r) => setTimeout(r, 5000));
@@ -78,38 +73,6 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
     }
   }
 
-  async function handleAnalyze() {
-    setError("");
-    const apiKey = storage.getAnthropicKey(); // optional — server has env var fallback
-
-    const topPosts = getTopPosts();
-    if (topPosts.length === 0) {
-      setError("No posts to analyze. Scrape first.");
-      return;
-    }
-
-    setAnalyzing(true);
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anthropicKey: apiKey || "", posts: topPosts }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Analysis failed");
-      }
-
-      const data = await res.json();
-      setPatterns(data.patterns);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Analysis failed");
-    } finally {
-      setAnalyzing(false);
-    }
-  }
-
   function getTopPosts(): LinkedInPost[] {
     return [...posts]
       .sort((a, b) => b.engagement_score - a.engagement_score)
@@ -122,14 +85,14 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-2">Scrape & Analyze</h2>
-      <p className="text-gray-500 mb-8">Fetch posts from your configured profiles and analyze winning patterns.</p>
+      <h2 className="text-2xl font-bold mb-2">Scrape & Select</h2>
+      <p className="text-gray-500 mb-8">Fetch posts from your configured profiles. The top posts will be sent to Claude in the chat.</p>
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
       )}
 
-      {/* Step 1: Scrape */}
+      {/* Scrape */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h3 className="text-lg font-semibold mb-3">Step 1: Scrape Posts</h3>
         <p className="text-sm text-gray-500 mb-4">
@@ -152,10 +115,9 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
         )}
       </div>
 
-      {/* Stats */}
+      {/* Stats + Top Posts */}
       {posts.length > 0 && (
         <>
-          {/* Debug: raw keys from first post */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             <Stat label="Total Posts" value={posts.length} />
             <Stat label="Avg Likes" value={avgLikes} />
@@ -163,11 +125,12 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
             <Stat label="Avg Shares" value={avgShares} />
           </div>
 
-          {/* Step 2: Top Posts */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-3">Step 2: Top Posts</h3>
+            <h3 className="text-lg font-semibold mb-3">Step 2: Select Top Posts</h3>
+            <p className="text-sm text-gray-500 mb-4">These will be sent to Claude for analysis in the chat.</p>
+
             <div className="flex items-center gap-4 mb-4">
-              <label className="text-sm text-gray-600">Analyze top</label>
+              <label className="text-sm text-gray-600">Send top</label>
               <input
                 type="range"
                 min={1}
@@ -187,30 +150,9 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
             </div>
           </div>
 
-          {/* Step 3: Analyze */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-3">Step 3: AI Pattern Analysis</h3>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing}
-              className="px-6 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {analyzing ? (
-                <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 align-middle" />
-                  Analyzing with Claude...
-                </>
-              ) : patterns ? (
-                "Re-analyze Patterns"
-              ) : (
-                "Analyze Patterns with Claude"
-              )}
-            </button>
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+            Ready! Head to <strong>Chat & Generate</strong> — Claude will analyze these posts and start writing with you.
           </div>
-
-          {/* Patterns Display */}
-          {patterns && <PatternsDisplay patterns={patterns} />}
         </>
       )}
     </div>
@@ -250,94 +192,6 @@ function PostCard({ rank, post }: { rank: number; post: LinkedInPost }) {
           <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">{post.text}</pre>
         </div>
       )}
-    </div>
-  );
-}
-
-function PatternsDisplay({ patterns }: { patterns: PostPatterns }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Extracted Patterns</h3>
-
-      {patterns.common_hooks && (
-        <Section title="Hook Types">
-          {patterns.common_hooks.map((h, i) => (
-            <li key={i} className="text-sm">
-              {typeof h === "string" ? h : <><strong>{h.type}</strong>: {h.example || h.description}</>}
-            </li>
-          ))}
-        </Section>
-      )}
-
-      {patterns.winning_structures && (
-        <Section title="Winning Structures">
-          {patterns.winning_structures.map((s, i) => (
-            <li key={i} className="text-sm">
-              {typeof s === "string" ? s : <><strong>{s.name || s.type}</strong>: {s.description}</>}
-            </li>
-          ))}
-        </Section>
-      )}
-
-      {patterns.engagement_drivers && (
-        <Section title="Engagement Drivers">
-          {patterns.engagement_drivers.map((d, i) => (
-            <li key={i} className="text-sm">
-              {typeof d === "string" ? d : d.description || d.driver || JSON.stringify(d)}
-            </li>
-          ))}
-        </Section>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        {patterns.dos && (
-          <div className="bg-green-50 rounded-xl p-4">
-            <h4 className="font-semibold text-green-800 mb-2">Do&apos;s</h4>
-            <ul className="space-y-1">
-              {patterns.dos.map((d, i) => (
-                <li key={i} className="text-sm text-green-700">+ {d}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {patterns.donts && (
-          <div className="bg-red-50 rounded-xl p-4">
-            <h4 className="font-semibold text-red-800 mb-2">Don&apos;ts</h4>
-            <ul className="space-y-1">
-              {patterns.donts.map((d, i) => (
-                <li key={i} className="text-sm text-red-700">- {d}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {patterns.ideal_post_blueprint && (
-        <Section title="Ideal Post Blueprint">
-          {Array.isArray(patterns.ideal_post_blueprint) ? (
-            patterns.ideal_post_blueprint.map((step, i) => (
-              <li key={i} className="text-sm">
-                {typeof step === "string" ? step : <><strong>{step.step}</strong>: {step.description}</>}
-              </li>
-            ))
-          ) : typeof patterns.ideal_post_blueprint === "object" ? (
-            Object.entries(patterns.ideal_post_blueprint).map(([k, v], i) => (
-              <li key={i} className="text-sm"><strong>{k}</strong>: {v}</li>
-            ))
-          ) : (
-            <li className="text-sm">{String(patterns.ideal_post_blueprint)}</li>
-          )}
-        </Section>
-      )}
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <h4 className="font-semibold text-gray-800 mb-2">{title}</h4>
-      <ul className="space-y-1 list-disc list-inside">{children}</ul>
     </div>
   );
 }
