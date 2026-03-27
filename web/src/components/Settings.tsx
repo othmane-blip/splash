@@ -7,10 +7,16 @@ export function Settings() {
   const [apifyToken, setApifyToken] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [saved, setSaved] = useState(false);
+  const [envStatus, setEnvStatus] = useState<{ apify: boolean; anthropic: boolean } | null>(null);
 
   useEffect(() => {
     setApifyToken(storage.getApifyToken());
     setAnthropicKey(storage.getAnthropicKey());
+    // Check if server-side env vars are configured
+    fetch("/api/env-status")
+      .then((r) => r.json())
+      .then((data) => setEnvStatus(data))
+      .catch(() => {});
   }, []);
 
   function handleSave() {
@@ -23,9 +29,40 @@ export function Settings() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-2">Settings</h2>
-      <p className="text-gray-500 mb-8">Configure your API keys. These are stored only in your browser.</p>
+      <p className="text-gray-500 mb-8">Configure your API keys.</p>
 
+      {/* Server-side env var status */}
+      {envStatus && (envStatus.apify || envStatus.anthropic) && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+          <p className="text-sm font-medium text-green-800 mb-2">Server-side keys (Vercel Environment Variables)</p>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${envStatus.apify ? "bg-green-500" : "bg-gray-300"}`} />
+              <span className={envStatus.apify ? "text-green-700" : "text-gray-500"}>
+                Apify Token: {envStatus.apify ? "Configured" : "Not set"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${envStatus.anthropic ? "bg-green-500" : "bg-gray-300"}`} />
+              <span className={envStatus.anthropic ? "text-green-700" : "text-gray-500"}>
+                Anthropic Key: {envStatus.anthropic ? "Configured" : "Not set"}
+              </span>
+            </div>
+          </div>
+          {envStatus.apify && envStatus.anthropic && (
+            <p className="text-xs text-green-600 mt-2">
+              Both keys are set on the server. You don&apos;t need to enter them below.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Browser-side fallback */}
       <div className="space-y-6 max-w-lg">
+        <p className="text-xs text-gray-400">
+          Browser-side keys (fallback if Vercel env vars are not set):
+        </p>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Apify API Token</label>
           <input

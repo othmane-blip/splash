@@ -21,7 +21,8 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
 
 export async function POST(req: NextRequest) {
   try {
-    const { anthropicKey, posts } = await req.json();
+    const { anthropicKey: clientKey, posts } = await req.json();
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || clientKey;
 
     if (!anthropicKey || !posts?.length) {
       return NextResponse.json({ error: "Missing anthropicKey or posts" }, { status: 400 });
