@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const runId = req.nextUrl.searchParams.get("runId");
-    const apifyToken = process.env.APIFY_API_TOKEN || req.nextUrl.searchParams.get("apifyToken");
+    const apifyToken = req.nextUrl.searchParams.get("apifyToken") || process.env.APIFY_API_TOKEN;
 
     if (!runId || !apifyToken) {
       return NextResponse.json({ error: "Missing runId or apifyToken" }, { status: 400 });

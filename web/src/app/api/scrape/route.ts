@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const { apifyToken: clientToken, profileUrls, maxPosts } = await req.json();
-    const apifyToken = process.env.APIFY_API_TOKEN || clientToken;
+    const apifyToken = clientToken || process.env.APIFY_API_TOKEN;
 
     if (!apifyToken || !profileUrls?.length) {
       return NextResponse.json({ error: "Missing apifyToken or profileUrls" }, { status: 400 });

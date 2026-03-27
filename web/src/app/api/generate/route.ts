@@ -44,7 +44,7 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
 export async function POST(req: NextRequest) {
   try {
     const { anthropicKey: clientKey, patterns, topPosts, userContext, numPosts } = await req.json();
-    const anthropicKey = process.env.ANTHROPIC_API_KEY || clientKey;
+    const anthropicKey = clientKey || process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicKey || !patterns || !topPosts?.length || !userContext) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
