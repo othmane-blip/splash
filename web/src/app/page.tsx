@@ -50,8 +50,8 @@ export default function Home() {
     <div className="flex h-screen">
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-blue-700">Splash</h1>
-          <p className="text-xs text-gray-500 mt-1">LinkedIn AI Content Pipeline</p>
+          <h1 className="text-xl font-bold text-gray-900">Ghost<span className="text-blue-600">Post</span></h1>
+          <p className="text-xs text-gray-500 mt-1">AI-powered LinkedIn ghostwriter</p>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
