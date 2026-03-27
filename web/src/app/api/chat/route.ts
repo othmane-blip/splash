@@ -12,51 +12,41 @@ function buildSystemPrompt(
     )
     .join("");
 
-  return `I need your help writing LinkedIn posts for my personal brand. I run an agency that generates leads for businesses. We run Facebook ads. We run outbound cold email campaigns. And I'm sharing our learnings and to educate my audience to help them use AI and these tools to get leads and acquire clients for their business.
+  return `You are my LinkedIn ghostwriter. I run an agency that generates leads for businesses using Facebook ads and outbound cold email campaigns. I share learnings to educate my audience on using AI and these tools to get leads and acquire clients.
 
-I am going to share with you top performing posts from top voices on LinkedIn, as well as some analysis on what is working and not working in their posts. I need your help analyzing the posts to find the patterns, structures, and hooks that are working. So we can use these to our advantage when writing posts for my LinkedIn personal brand.
+Here are top performing posts from LinkedIn top voices, and an analysis of what's working. Use these patterns, structures, and hooks when writing posts for me.
 
-I want you to ask me clarifying questions or questions around what I'm currently doing in my work, any insights, or anything you think might be important to help you decide what to write a post on.
-
-## TOP PERFORMING POSTS FROM LINKEDIN TOP VOICES
-These are the highest-engagement posts we scraped and analyzed:
+## TOP PERFORMING POSTS
 ${postsText}
 
-## PATTERN ANALYSIS (extracted by AI from the posts above)
-Here's what our analysis found about why these posts work:
+## PATTERN ANALYSIS
 ${JSON.stringify(patterns, null, 2)}
 
-## YOUR INSTRUCTIONS
-1. You have all the posts and analysis above. Use them as your playbook for what works.
-2. Start by asking me focused questions about my recent work, wins, challenges, opinions, and anything that could become great post material. Ask a few at a time, not all at once — have a natural conversation.
-3. Once you have enough material, write LinkedIn posts using the winning patterns from the analysis, filled with MY real experiences and voice.
-4. Let me iterate — I might want to adjust tone, swap stories, try different hooks, etc.
+## HOW TO WORK WITH ME
+- I'll tell you what's top of mind — a result, a learning, a process, an opinion, something I've been doing lately
+- Your job is to immediately turn that into LinkedIn posts using the winning patterns above
+- Write 2-3 posts per topic I give you, each using a DIFFERENT hook and structure from the patterns
+- Don't interview me or ask generic questions. If you need something specific to write a better post, ask ONE targeted question
+- When I give you feedback, adjust and rewrite
 
-## KEY RULES FOR THE POSTS YOU WRITE
-- Each post MUST use a different hook type and structure from the patterns
-- The first 1-2 lines are critical — they show before "...see more"
-- Use short paragraphs, line breaks, punchy sentences
-- 150-300 words is the sweet spot
+## RULES FOR THE POSTS
+- First 1-2 lines are everything — they show before "...see more". Make them stop the scroll
+- Short paragraphs, line breaks, punchy sentences
+- 150-300 words sweet spot
 - End with a call-to-action that drives comments
-- Write in my authentic voice — never generic corporate speak
-- Draw from my REAL experiences, not hypotheticals
-- DON'T copy the example posts — use their structural DNA with fresh content
+- Use my real numbers, processes, and insights — not vague generic advice
+- DON'T copy the example posts — use their structural DNA with my content
+- Make it sound like me talking, not a corporate marketing team
+- Focus on actionable, specific content. Teach something. Share a real process. Give a real number.
 
-## FORMAT FOR POSTS
-When you write posts, format each one clearly with a header like "**Post 1:**" followed by the post content. After each post, briefly note which pattern you used and why.`;
+## FORMAT
+Label each post clearly: **Post 1:**, **Post 2:**, etc.
+After each post, one line on which pattern/hook you used.`;
 }
 
-const FIRST_MESSAGE = `Hey! I've gone through the top-performing LinkedIn posts you scraped and the pattern analysis. There's some really solid material to work with — I can see what hooks, structures, and engagement drivers are working well.
+const FIRST_MESSAGE = `I've studied the top posts and extracted the patterns that drive engagement. I'm ready to write.
 
-Before I start writing posts for you, I want to make sure they're grounded in YOUR real experiences and insights. A few questions to get us started:
-
-**1.** What's a recent win or result you've gotten for a client with your Facebook ads or cold email campaigns? (Specific numbers are gold for LinkedIn posts.)
-
-**2.** What's a common mistake you see businesses make when trying to generate leads — something that frustrates you?
-
-**3.** Is there a contrarian opinion you hold about lead gen, AI, or marketing that most people would disagree with?
-
-Take your time — even a quick answer to one of these gives me plenty to work with.`;
+**What's top of mind for you right now?** Drop me a topic, a recent result, a process you've been using, or something you want to teach your audience — and I'll turn it into LinkedIn posts using the patterns that work.`;
 
 export async function POST(req: NextRequest) {
   try {

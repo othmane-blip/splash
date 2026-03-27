@@ -184,7 +184,7 @@ export function Chat({ posts, patterns, userContext }: Props) {
         <div>
           <h2 className="text-2xl font-bold">Chat with Claude</h2>
           <p className="text-gray-500 text-sm">
-            Claude has analyzed {topPosts.length} top posts and their patterns. Tell it about yourself and it will write posts for you.
+            Claude has the top {topPosts.length} posts and patterns loaded. Tell it what&apos;s top of mind and it&apos;ll write posts.
           </p>
         </div>
         {messages.length > 1 && (
@@ -234,7 +234,7 @@ export function Chat({ posts, patterns, userContext }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Tell Claude about yourself, ask for posts, give feedback..."
+            placeholder="Drop a topic, result, or process and I'll write posts..."
             rows={2}
             className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
             disabled={streaming}
