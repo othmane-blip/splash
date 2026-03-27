@@ -18,9 +18,6 @@ export interface LinkedInPost {
   reaction_types: Record<string, number>;
   engagement_score: number;
   image_urls?: string[];
-  _raw_keys?: string[];
-  _debug_engagement?: string;
-  _debug_socialContent?: string;
 }
 
 export interface PostPatterns {

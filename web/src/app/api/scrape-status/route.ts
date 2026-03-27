@@ -70,70 +70,32 @@ function parseApifyPost(item: Record<string, unknown>) {
       author.linkedinUrl || author.url || author.profileUrl || item.authorUrl || ""
     );
 
-    // Parse engagement data from the actual Apify harvestapi schema:
-    // Fields: engagement, socialContent, reactions, comments, postImages
+    // Parse engagement from Apify harvestapi schema
+    // engagement: { likes, comments, shares, reactions: [{type, count}] }
     const engagement = (item.engagement || {}) as Record<string, unknown>;
-    const socialContent = (item.socialContent || {}) as Record<string, unknown>;
 
-    // Parse reaction types from socialContent or engagement
+    // Parse reaction types from engagement.reactions array
     const reactionTypes: Record<string, number> = {};
     let totalLikes = 0;
 
-    // Try reactionTypeCounts in multiple locations
-    const reactionCounts =
-      socialContent.reactionTypeCounts ||
-      engagement.reactionTypeCounts ||
-      item.reactionTypeCounts ||
-      item.reactions;
-
-    if (Array.isArray(reactionCounts)) {
-      for (const r of reactionCounts as Array<Record<string, unknown>>) {
-        const type = String(r.type || r.reactionType || "LIKE");
-        const count = Number(r.count || r.value || 0);
+    const reactions = engagement.reactions || item.reactions;
+    if (Array.isArray(reactions)) {
+      for (const r of reactions as Array<Record<string, unknown>>) {
+        const type = String(r.type || "LIKE");
+        const count = Number(r.count || 0);
         reactionTypes[type] = count;
         totalLikes += count;
       }
-    } else if (typeof reactionCounts === "object" && reactionCounts !== null) {
-      for (const [type, count] of Object.entries(reactionCounts as Record<string, number>)) {
-        reactionTypes[type] = Number(count);
-        totalLikes += Number(count);
-      }
     }
 
-    // Fall back to numeric counts from engagement or socialContent
+    // Fall back to engagement.likes or top-level
     if (totalLikes === 0) {
-      totalLikes = Number(
-        engagement.numLikes || engagement.likes || engagement.totalLikes ||
-        engagement.reactionCount || engagement.totalReactions ||
-        socialContent.numLikes || socialContent.totalReactionCount ||
-        item.totalReactionCount || item.numLikes || item.likesCount || item.likes ||
-        0
-      );
+      totalLikes = Number(engagement.likes || item.likes || item.likesCount || 0);
     }
 
-    // Comments: try engagement, socialContent, then top-level
-    const comments = Number(
-      engagement.numComments || engagement.comments || engagement.totalComments || engagement.commentCount ||
-      socialContent.numComments || socialContent.totalComments || socialContent.commentCount ||
-      item.numComments || item.commentsCount ||
-      0
-    );
-
-    // Shares: try engagement, socialContent, then top-level
-    const shares = Number(
-      engagement.numShares || engagement.shares || engagement.totalShares || engagement.shareCount ||
-      socialContent.numShares || socialContent.totalShares || socialContent.shareCount ||
-      item.numShares || item.sharesCount ||
-      0
-    );
-
-    // Impressions
-    const impressions = Number(
-      engagement.numImpressions || engagement.impressions || engagement.views ||
-      socialContent.numImpressions || socialContent.impressions ||
-      item.numImpressions || item.impressions ||
-      0
-    );
+    const comments = Number(engagement.comments || item.numComments || item.comments || 0);
+    const shares = Number(engagement.shares || item.numShares || item.shares || 0);
+    const impressions = Number(engagement.impressions || item.numImpressions || item.impressions || 0);
 
     // Get post text
     const text = String(
@@ -175,10 +137,6 @@ function parseApifyPost(item: Record<string, unknown>) {
       reaction_types: reactionTypes,
       engagement_score: totalLikes + 2 * comments + 3 * shares,
       image_urls: imageUrls,
-      // Debug: dump engagement and socialContent shapes
-      _raw_keys: Object.keys(item),
-      _debug_engagement: JSON.stringify(engagement).slice(0, 500),
-      _debug_socialContent: JSON.stringify(socialContent).slice(0, 500),
     };
   } catch {
     return null;

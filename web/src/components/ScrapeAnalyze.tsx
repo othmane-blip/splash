@@ -156,25 +156,6 @@ export function ScrapeAnalyze({ profiles, posts, setPosts, patterns, setPatterns
       {posts.length > 0 && (
         <>
           {/* Debug: raw keys from first post */}
-          {posts[0]?._raw_keys && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-xs space-y-2">
-              <p className="font-semibold">Debug: Apify raw field names</p>
-              <code className="break-all block">{posts[0]._raw_keys.join(", ")}</code>
-              {posts[0]._debug_engagement && (
-                <div>
-                  <p className="font-semibold mt-2">engagement object:</p>
-                  <code className="break-all block">{posts[0]._debug_engagement}</code>
-                </div>
-              )}
-              {posts[0]._debug_socialContent && (
-                <div>
-                  <p className="font-semibold mt-2">socialContent object:</p>
-                  <code className="break-all block">{posts[0]._debug_socialContent}</code>
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="grid grid-cols-4 gap-4 mb-6">
             <Stat label="Total Posts" value={posts.length} />
             <Stat label="Avg Likes" value={avgLikes} />
