@@ -113,17 +113,27 @@ function parseApifyPost(item: Record<string, unknown>) {
       author_name: authorName,
       author_url: authorUrl,
       text,
-      posted_at: String(item.createdAt || item.postedAt || item.publishedAt || item.date || ""),
+      posted_at: parseDate(item.postedAt || item.createdAt || item.publishedAt || item.date || ""),
       likes: totalLikes,
       comments,
       shares,
       impressions: Number(item.numImpressions || item.impressions || item.views || 0),
       media_type: mediaType,
-      post_url: String(item.url || item.postUrl || item.link || ""),
+      post_url: String(item.linkedinUrl || item.url || item.postUrl || item.link || ""),
       reaction_types: reactionTypes,
       engagement_score: totalLikes + 2 * comments + 3 * shares,
     };
   } catch {
     return null;
   }
+}
+
+function parseDate(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+    return String(obj.date || obj.timestamp || obj.postedAt || "");
+  }
+  return String(value);
 }
