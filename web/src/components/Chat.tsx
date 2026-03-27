@@ -50,7 +50,6 @@ export function Chat({ posts, patterns, userContext }: Props) {
             messages: [],
             patterns,
             topPosts,
-            savedProfile: userContext,
           }),
         });
 
@@ -86,7 +85,6 @@ export function Chat({ posts, patterns, userContext }: Props) {
           messages: newMessages,
           patterns,
           topPosts,
-          savedProfile: userContext,
         }),
       });
 

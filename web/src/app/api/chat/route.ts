@@ -3,8 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 function buildSystemPrompt(
   patterns: Record<string, unknown>,
-  topPosts: Array<{ author_name: string; likes: number; comments: number; shares: number; text: string }>,
-  savedProfile: Record<string, unknown> | null
+  topPosts: Array<{ author_name: string; likes: number; comments: number; shares: number; text: string }>
 ): string {
   const postsText = topPosts
     .map(
@@ -13,65 +12,55 @@ function buildSystemPrompt(
     )
     .join("");
 
-  const profileSection = savedProfile?.name
-    ? `\n## WHAT I ALREADY KNOW ABOUT THE USER (from a previous session)
-- Name: ${savedProfile.name}
-- Role: ${savedProfile.role}
-- Industry: ${savedProfile.industry}
-- Expertise: ${Array.isArray(savedProfile.expertise_areas) ? (savedProfile.expertise_areas as string[]).join(", ") : savedProfile.expertise_areas}
-- Recent achievements: ${Array.isArray(savedProfile.recent_achievements) ? (savedProfile.recent_achievements as string[]).join(", ") : savedProfile.recent_achievements}
-- Opinions/hot takes: ${Array.isArray(savedProfile.opinions) ? (savedProfile.opinions as string[]).join(", ") : savedProfile.opinions}
-- Target audience: ${savedProfile.target_audience}
-- Preferred tone: ${savedProfile.tone_preference}
+  return `I need your help writing LinkedIn posts for my personal brand. I run an agency that generates leads for businesses. We run Facebook ads. We run outbound cold email campaigns. And I'm sharing our learnings and to educate my audience to help them use AI and these tools to get leads and acquire clients for their business.
 
-You already have this context. Don't re-ask these basics. Instead, dig deeper — ask about specific recent stories, challenges, wins, or contrarian views that would make great post material.`
-    : `\n## USER PROFILE
-No saved profile yet. Start by learning about the user — their role, industry, expertise, and what makes them unique. Keep it conversational, not like a form.`;
+I am going to share with you top performing posts from top voices on LinkedIn, as well as some analysis on what is working and not working in their posts. I need your help analyzing the posts to find the patterns, structures, and hooks that are working. So we can use these to our advantage when writing posts for my LinkedIn personal brand.
 
-  return `You are an elite LinkedIn ghostwriter. You help professionals create high-performing LinkedIn posts by combining proven viral patterns with their authentic voice and experiences.
+I want you to ask me clarifying questions or questions around what I'm currently doing in my work, any insights, or anything you think might be important to help you decide what to write a post on.
 
-## YOUR APPROACH
-1. FIRST: Have a brief, natural conversation to understand the user's story, expertise, and what they want to share. Ask 3-5 focused questions (not all at once — have a conversation). If you already have their profile, skip basics and ask about fresh material.
-2. THEN: Write 3-5 LinkedIn posts using the winning patterns below, filled with the user's real experiences and voice.
-3. ITERATE: Let the user give feedback, refine posts, adjust tone, try different angles.
-
-## TOP PERFORMING POSTS (scraped from LinkedIn top voices)
-These posts got the highest engagement. Study their structure, hooks, and patterns:
+## TOP PERFORMING POSTS FROM LINKEDIN TOP VOICES
+These are the highest-engagement posts we scraped and analyzed:
 ${postsText}
 
-## PATTERN ANALYSIS (extracted by AI from the top posts above)
+## PATTERN ANALYSIS (extracted by AI from the posts above)
+Here's what our analysis found about why these posts work:
 ${JSON.stringify(patterns, null, 2)}
 
-## KEY RULES FOR WRITING POSTS
+## YOUR INSTRUCTIONS
+1. You have all the posts and analysis above. Use them as your playbook for what works.
+2. Start by asking me focused questions about my recent work, wins, challenges, opinions, and anything that could become great post material. Ask a few at a time, not all at once — have a natural conversation.
+3. Once you have enough material, write LinkedIn posts using the winning patterns from the analysis, filled with MY real experiences and voice.
+4. Let me iterate — I might want to adjust tone, swap stories, try different hooks, etc.
+
+## KEY RULES FOR THE POSTS YOU WRITE
 - Each post MUST use a different hook type and structure from the patterns
 - The first 1-2 lines are critical — they show before "...see more"
 - Use short paragraphs, line breaks, punchy sentences
 - 150-300 words is the sweet spot
 - End with a call-to-action that drives comments
-- Write in the user's authentic voice — never generic corporate speak
-- Draw from their REAL experiences, not hypotheticals
+- Write in my authentic voice — never generic corporate speak
+- Draw from my REAL experiences, not hypotheticals
 - DON'T copy the example posts — use their structural DNA with fresh content
-${profileSection}
 
 ## FORMAT FOR POSTS
-When you write posts, format each one clearly with a header like "**Post 1:**" followed by the post content. After each post, add a brief note on which pattern you used and why.`;
+When you write posts, format each one clearly with a header like "**Post 1:**" followed by the post content. After each post, briefly note which pattern you used and why.`;
 }
 
-const FIRST_MESSAGE_WITH_PROFILE = `I've analyzed the top-performing LinkedIn posts and extracted the patterns that drive engagement — hooks, structures, storytelling techniques, and CTAs that work.
+const FIRST_MESSAGE = `Hey! I've gone through the top-performing LinkedIn posts you scraped and the pattern analysis. There's some really solid material to work with — I can see what hooks, structures, and engagement drivers are working well.
 
-I already have your profile info, so let's skip the basics. To write posts that really land, I need fresh material:
+Before I start writing posts for you, I want to make sure they're grounded in YOUR real experiences and insights. A few questions to get us started:
 
-**What's something that happened recently in your work that stuck with you?** Could be a win, a lesson learned, a frustrating moment, or a realization. The best LinkedIn posts come from real moments.`;
+**1.** What's a recent win or result you've gotten for a client with your Facebook ads or cold email campaigns? (Specific numbers are gold for LinkedIn posts.)
 
-const FIRST_MESSAGE_NO_PROFILE = `I've analyzed the top-performing LinkedIn posts and extracted the patterns that drive the most engagement — specific hooks, structures, and techniques that consistently get thousands of likes and comments.
+**2.** What's a common mistake you see businesses make when trying to generate leads — something that frustrates you?
 
-Now I need to understand YOUR story so I can write posts that sound authentically like you.
+**3.** Is there a contrarian opinion you hold about lead gen, AI, or marketing that most people would disagree with?
 
-**Let's start simple: what do you do, and what's one thing you're passionate about in your work?**`;
+Take your time — even a quick answer to one of these gives me plenty to work with.`;
 
 export async function POST(req: NextRequest) {
   try {
-    const { anthropicKey: clientKey, messages, patterns, topPosts, savedProfile } = await req.json();
+    const { anthropicKey: clientKey, messages, patterns, topPosts } = await req.json();
     const anthropicKey = clientKey || process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicKey) {
@@ -83,16 +72,13 @@ export async function POST(req: NextRequest) {
 
     // If this is the initial request (no user messages yet), return the first message
     if (!messages || messages.length === 0) {
-      const firstMessage = savedProfile?.name
-        ? FIRST_MESSAGE_WITH_PROFILE
-        : FIRST_MESSAGE_NO_PROFILE;
-      return new Response(JSON.stringify({ message: firstMessage }), {
+      return new Response(JSON.stringify({ message: FIRST_MESSAGE }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
     const client = new Anthropic({ apiKey: anthropicKey });
-    const systemPrompt = buildSystemPrompt(patterns || {}, topPosts || [], savedProfile);
+    const systemPrompt = buildSystemPrompt(patterns || {}, topPosts || []);
 
     // Stream the response
     const stream = await client.messages.stream({
