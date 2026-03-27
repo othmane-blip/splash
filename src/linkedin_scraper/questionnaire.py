@@ -96,6 +96,44 @@ def gather_user_context() -> UserContext:
     return context
 
 
+def build_user_context(answers: dict) -> UserContext:
+    """Build a UserContext from a dict of answers (for non-interactive use, e.g. web UI)."""
+    ctx = UserContext()
+    for q in QUESTIONS:
+        value = answers.get(q["key"], q.get("default", ""))
+        if not value:
+            continue
+        if q.get("is_list"):
+            setattr(ctx, q["key"], [item.strip() for item in value.split(",") if item.strip()])
+        else:
+            setattr(ctx, q["key"], value)
+    return ctx
+
+
+def save_user_context(ctx: UserContext, path: str = "output/user_context.json"):
+    """Save user context to JSON for persistence across sessions."""
+    from dataclasses import asdict
+    from pathlib import Path
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        import json
+        json.dump(asdict(ctx), f, indent=2)
+
+
+def load_user_context(path: str = "output/user_context.json") -> UserContext | None:
+    """Load cached user context from disk."""
+    from pathlib import Path
+
+    p = Path(path)
+    if not p.exists():
+        return None
+    with open(p) as f:
+        import json
+        data = json.load(f)
+    return UserContext(**data)
+
+
 def _display_context_summary(ctx: UserContext):
     """Display a summary of gathered context."""
     lines = [
