@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { LinkedInPost, PostPatterns, UserContext } from "@/lib/types";
+import { LinkedInPost } from "@/lib/types";
 import { storage } from "@/lib/storage";
 
 interface ImageAttachment {
@@ -18,12 +18,10 @@ interface Message {
 
 interface Props {
   posts: LinkedInPost[];
-  patterns: PostPatterns | null;
-  userContext: UserContext | null;
-  setUserContext: (ctx: UserContext) => void;
+  selectedPosts: LinkedInPost[];
 }
 
-export function Chat({ posts }: Props) {
+export function Chat({ posts, selectedPosts }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
@@ -34,11 +32,11 @@ export function Chat({ posts }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const topPosts = [...posts]
+  const topPosts = selectedPosts.length > 0 ? selectedPosts : [...posts]
     .sort((a, b) => b.engagement_score - a.engagement_score)
     .slice(0, 5);
 
-  const ready = posts.length > 0;
+  const ready = topPosts.length > 0;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -233,7 +231,7 @@ export function Chat({ posts }: Props) {
         <h2 className="text-2xl font-bold mb-2">Chat with Claude</h2>
         <p className="text-gray-500 mb-6">Complete the previous steps first.</p>
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
-          No scraped posts. Complete <strong>Scrape & Analyze</strong> first.
+          No posts selected. Go to <strong>Scrape & Select</strong> and confirm your top posts first.
         </div>
       </div>
     );

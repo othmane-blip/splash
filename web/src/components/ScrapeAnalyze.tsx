@@ -8,9 +8,10 @@ interface Props {
   profiles: LinkedInProfile[];
   posts: LinkedInPost[];
   setPosts: (p: LinkedInPost[]) => void;
+  onConfirm: (posts: LinkedInPost[]) => void;
 }
 
-export function ScrapeAnalyze({ profiles, posts, setPosts }: Props) {
+export function ScrapeAnalyze({ profiles, posts, setPosts, onConfirm }: Props) {
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
   const [topN, setTopN] = useState(5);
@@ -150,9 +151,12 @@ export function ScrapeAnalyze({ profiles, posts, setPosts }: Props) {
             </div>
           </div>
 
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
-            Ready! Head to <strong>Chat & Generate</strong> — Claude will analyze these posts and start writing with you.
-          </div>
+          <button
+            onClick={() => onConfirm(getTopPosts())}
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+          >
+            Confirm {topN} posts & start chatting with Claude →
+          </button>
         </>
       )}
     </div>

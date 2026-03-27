@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { storage } from "@/lib/storage";
-import { LinkedInProfile, LinkedInPost, PostPatterns, UserContext } from "@/lib/types";
+import { LinkedInProfile, LinkedInPost } from "@/lib/types";
 import { Settings } from "@/components/Settings";
 import { ConfigureProfiles } from "@/components/ConfigureProfiles";
 import { ScrapeAnalyze } from "@/components/ScrapeAnalyze";
@@ -11,7 +11,7 @@ import { Chat } from "@/components/Chat";
 const TABS = [
   { id: "settings", label: "Settings" },
   { id: "profiles", label: "1. Profiles" },
-  { id: "scrape", label: "2. Scrape" },
+  { id: "scrape", label: "2. Scrape & Select" },
   { id: "chat", label: "3. Chat & Generate" },
 ] as const;
 
@@ -21,6 +21,7 @@ export default function Home() {
   const [tab, setTab] = useState<TabId>("profiles");
   const [profiles, setProfiles] = useState<LinkedInProfile[]>([]);
   const [posts, setPosts] = useState<LinkedInPost[]>([]);
+  const [selectedPosts, setSelectedPosts] = useState<LinkedInPost[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -31,6 +32,11 @@ export default function Home() {
 
   useEffect(() => { if (loaded) storage.setProfiles(profiles); }, [profiles, loaded]);
   useEffect(() => { if (loaded) storage.setPosts(posts); }, [posts, loaded]);
+
+  function handleConfirmPosts(confirmed: LinkedInPost[]) {
+    setSelectedPosts(confirmed);
+    setTab("chat");
+  }
 
   if (!loaded) {
     return (
@@ -68,6 +74,7 @@ export default function Home() {
           <div className="font-medium text-gray-500 uppercase tracking-wider mb-2">Pipeline Status</div>
           <StatusDot ok={profiles.length > 0} label={`${profiles.length} profiles`} />
           <StatusDot ok={posts.length > 0} label={`${posts.length} posts scraped`} />
+          <StatusDot ok={selectedPosts.length > 0} label={`${selectedPosts.length} posts selected`} />
         </div>
       </aside>
 
@@ -76,14 +83,17 @@ export default function Home() {
           {tab === "settings" && <Settings />}
           {tab === "profiles" && <ConfigureProfiles profiles={profiles} setProfiles={setProfiles} />}
           {tab === "scrape" && (
-            <ScrapeAnalyze profiles={profiles} posts={posts} setPosts={setPosts} />
+            <ScrapeAnalyze
+              profiles={profiles}
+              posts={posts}
+              setPosts={setPosts}
+              onConfirm={handleConfirmPosts}
+            />
           )}
           {tab === "chat" && (
             <Chat
               posts={posts}
-              patterns={null}
-              userContext={null}
-              setUserContext={() => {}}
+              selectedPosts={selectedPosts}
             />
           )}
         </div>
