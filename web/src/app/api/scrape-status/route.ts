@@ -70,17 +70,21 @@ function parseApifyPost(item: Record<string, unknown>) {
       author.linkedinUrl || author.url || author.profileUrl || item.authorUrl || ""
     );
 
-    // Parse reaction types - handle both array and object formats
+    // Parse engagement data from the actual Apify harvestapi schema:
+    // Fields: engagement, socialContent, reactions, comments, postImages
+    const engagement = (item.engagement || {}) as Record<string, unknown>;
+    const socialContent = (item.socialContent || {}) as Record<string, unknown>;
+
+    // Parse reaction types from socialContent or engagement
     const reactionTypes: Record<string, number> = {};
     let totalLikes = 0;
 
-    // Try multiple possible locations for reaction data
+    // Try reactionTypeCounts in multiple locations
     const reactionCounts =
+      socialContent.reactionTypeCounts ||
+      engagement.reactionTypeCounts ||
       item.reactionTypeCounts ||
-      item.reactions ||
-      item.reactionCounts ||
-      (item.socialContent as Record<string, unknown>)?.reactionTypeCounts ||
-      (item.socialCounts as Record<string, unknown>)?.reactionTypeCounts;
+      item.reactions;
 
     if (Array.isArray(reactionCounts)) {
       for (const r of reactionCounts as Array<Record<string, unknown>>) {
@@ -96,55 +100,66 @@ function parseApifyPost(item: Record<string, unknown>) {
       }
     }
 
-    // Fall back to simple likes/totalReactionCount fields
+    // Fall back to numeric counts from engagement or socialContent
     if (totalLikes === 0) {
       totalLikes = Number(
-        item.totalReactionCount ||
-        item.totalReactions ||
-        item.likesCount ||
-        item.numLikes ||
-        item.likes ||
-        item.numReactions ||
-        (item.socialContent as Record<string, unknown>)?.totalReactionCount ||
+        engagement.numLikes || engagement.likes || engagement.totalLikes ||
+        engagement.reactionCount || engagement.totalReactions ||
+        socialContent.numLikes || socialContent.totalReactionCount ||
+        item.totalReactionCount || item.numLikes || item.likesCount || item.likes ||
         0
       );
     }
 
-    // Get post text - try multiple possible field names
-    const text = String(
-      item.content || item.commentary || item.text || item.postText || item.body || item.message || ""
+    // Comments: try engagement, socialContent, then top-level
+    const comments = Number(
+      engagement.numComments || engagement.comments || engagement.totalComments || engagement.commentCount ||
+      socialContent.numComments || socialContent.totalComments || socialContent.commentCount ||
+      item.numComments || item.commentsCount ||
+      0
     );
 
-    // Parse comments - try nested socialContent too
-    const socialContent = (item.socialContent || {}) as Record<string, unknown>;
-    const comments = Number(
-      item.numComments || item.commentsCount || item.comments ||
-      item.totalComments || socialContent.totalComments ||
-      socialContent.numComments || 0
-    );
+    // Shares: try engagement, socialContent, then top-level
     const shares = Number(
-      item.numShares || item.sharesCount || item.shares ||
-      item.totalShares || socialContent.totalShares ||
-      socialContent.numShares || 0
+      engagement.numShares || engagement.shares || engagement.totalShares || engagement.shareCount ||
+      socialContent.numShares || socialContent.totalShares || socialContent.shareCount ||
+      item.numShares || item.sharesCount ||
+      0
+    );
+
+    // Impressions
+    const impressions = Number(
+      engagement.numImpressions || engagement.impressions || engagement.views ||
+      socialContent.numImpressions || socialContent.impressions ||
+      item.numImpressions || item.impressions ||
+      0
+    );
+
+    // Get post text
+    const text = String(
+      item.content || item.commentary || item.text || item.postText || item.body || ""
     );
 
     // Determine media type and collect image URLs
     let mediaType = "text";
     const imageUrls: string[] = [];
-    if (item.images && Array.isArray(item.images)) {
+
+    // postImages field from Apify
+    if (item.postImages && Array.isArray(item.postImages)) {
+      mediaType = "image";
+      for (const img of item.postImages as Array<Record<string, unknown>>) {
+        const url = img.url || img.src || img.original || img.display;
+        if (url) imageUrls.push(String(url));
+      }
+    } else if (item.images && Array.isArray(item.images)) {
       mediaType = "image";
       for (const img of item.images as Array<Record<string, unknown>>) {
-        if (img.url) imageUrls.push(String(img.url));
+        const url = img.url || img.src;
+        if (url) imageUrls.push(String(url));
       }
-    } else if (item.image) {
-      mediaType = "image";
-      const img = item.image as Record<string, unknown>;
-      if (typeof img === "string") imageUrls.push(img);
-      else if (img.url) imageUrls.push(String(img.url));
     }
-    if (item.documents) mediaType = "document";
+    if (item.document) mediaType = "document";
     else if (item.video) mediaType = "video";
-    else if (item.mediaType) mediaType = String(item.mediaType);
 
     return {
       author_name: authorName,
@@ -154,17 +169,16 @@ function parseApifyPost(item: Record<string, unknown>) {
       likes: totalLikes,
       comments,
       shares,
-      impressions: Number(
-        item.numImpressions || item.impressions || item.views ||
-        socialContent.numImpressions || 0
-      ),
+      impressions,
       media_type: mediaType,
       post_url: String(item.linkedinUrl || item.url || item.postUrl || item.link || ""),
       reaction_types: reactionTypes,
       engagement_score: totalLikes + 2 * comments + 3 * shares,
       image_urls: imageUrls,
-      // Include raw keys for debugging
+      // Debug: dump engagement and socialContent shapes
       _raw_keys: Object.keys(item),
+      _debug_engagement: JSON.stringify(engagement).slice(0, 500),
+      _debug_socialContent: JSON.stringify(socialContent).slice(0, 500),
     };
   } catch {
     return null;
