@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       system: systemPrompt,
-      messages: messages.map((m: { role: string; content: string }) => ({
+      messages: messages.map((m: { role: string; content: string | Array<Record<string, unknown>> }) => ({
         role: m.role,
-        content: m.content,
+        content: m.content, // Pass through as-is (string or content blocks with images)
       })),
     });
 
