@@ -17,13 +17,20 @@ class LinkedInPost:
     likes: int = 0
     comments: int = 0
     shares: int = 0
+    impressions: int = 0
     media_type: str = ""  # text, image, video, carousel, article
     post_url: str = ""
+    reaction_types: dict[str, int] = field(default_factory=dict)  # LIKE, PRAISE, APPRECIATION, etc.
+
+    @property
+    def total_reactions(self) -> int:
+        """Total reactions across all types."""
+        return sum(self.reaction_types.values()) if self.reaction_types else self.likes
 
     @property
     def engagement_score(self) -> float:
-        """Weighted engagement score: likes + 2*comments + 3*shares."""
-        return self.likes + (2 * self.comments) + (3 * self.shares)
+        """Weighted engagement score: reactions + 2*comments + 3*shares."""
+        return self.total_reactions + (2 * self.comments) + (3 * self.shares)
 
 
 @dataclass

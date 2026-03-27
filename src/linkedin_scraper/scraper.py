@@ -1,4 +1,4 @@
-"""LinkedIn post scraper using Apify API."""
+"""LinkedIn post scraper using Apify's harvestapi/linkedin-profile-posts actor."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from apify_client import ApifyClient
 from .models import LinkedInPost
 
 
-# Apify actor for LinkedIn profile scraping
-LINKEDIN_SCRAPER_ACTOR = "anchor/linkedin-profile-scraper"
-LINKEDIN_POSTS_ACTOR = "apimatica/linkedin-posts-scraper"
+# HarvestAPI LinkedIn Profile Posts Scraper - no cookies needed
+# Docs: https://apify.com/harvestapi/linkedin-profile-posts
+ACTOR_ID = "harvestapi/linkedin-profile-posts"
 
 
 def load_profiles(config_path: str = "config/profiles.json") -> dict:
@@ -36,8 +36,9 @@ def scrape_linkedin_posts(
     """
     Scrape LinkedIn posts from given profile URLs using Apify.
 
-    Uses the Apify LinkedIn scraper actor to fetch recent posts
-    from each profile URL.
+    Uses harvestapi/linkedin-profile-posts which accepts profile URLs
+    directly and returns posts with engagement metrics (reactions by type,
+    comments, shares, impressions). No cookies or login required.
     """
     token = apify_token or os.environ.get("APIFY_API_TOKEN")
     if not token:
@@ -46,60 +47,80 @@ def scrape_linkedin_posts(
         )
 
     client = ApifyClient(token)
+
+    # This actor accepts all profile URLs in a single run
+    # and processes up to 6 concurrently
+    run_input = {
+        "targetUrls": profile_urls,
+        "maxPosts": posts_per_profile,
+        "scrapeReactions": False,  # Don't deep-scrape individual reactions (saves cost)
+        "scrapeComments": False,   # Don't deep-scrape full comment threads (saves cost)
+    }
+
+    print(f"  Starting Apify actor for {len(profile_urls)} profiles...")
+    print(f"  Max {posts_per_profile} posts per profile")
+
+    run = client.actor(ACTOR_ID).call(run_input=run_input)
+
     all_posts: list[LinkedInPost] = []
+    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+        post = _parse_harvestapi_post(item)
+        if post and post.text.strip():
+            all_posts.append(post)
 
-    for url in profile_urls:
-        print(f"  Scraping posts from: {url}")
-        try:
-            posts = _scrape_profile_posts(client, url, posts_per_profile)
-            all_posts.extend(posts)
-            print(f"    -> Found {len(posts)} posts")
-        except Exception as e:
-            print(f"    -> Error scraping {url}: {e}")
-
+    print(f"  Scraped {len(all_posts)} posts total")
     return all_posts
 
 
-def _scrape_profile_posts(
-    client: ApifyClient,
-    profile_url: str,
-    max_posts: int,
-) -> list[LinkedInPost]:
-    """Scrape posts from a single LinkedIn profile using Apify."""
-    # Run the Apify actor for LinkedIn post scraping
-    run_input = {
-        "profileUrls": [profile_url],
-        "maxPosts": max_posts,
-        "proxy": {
-            "useApifyProxy": True,
-            "apifyProxyGroups": ["RESIDENTIAL"],
-        },
-    }
+def _parse_harvestapi_post(item: dict) -> LinkedInPost | None:
+    """
+    Parse a HarvestAPI result item into a LinkedInPost.
 
-    run = client.actor(LINKEDIN_POSTS_ACTOR).call(run_input=run_input)
-
-    posts = []
-    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-        post = _parse_apify_post(item, profile_url)
-        if post and post.text.strip():
-            posts.append(post)
-
-    return posts
-
-
-def _parse_apify_post(item: dict, profile_url: str) -> LinkedInPost | None:
-    """Parse an Apify result item into a LinkedInPost."""
+    HarvestAPI output fields:
+    - commentary: post text
+    - author.name, author.position, author.linkedinUrl
+    - createdAt / createdAtTimestamp
+    - numComments, numShares, numImpressions
+    - reactionTypeCounts: [{"type": "LIKE", "count": 123}, ...]
+    - images, documents
+    - url: direct link to the post
+    """
     try:
+        # Extract author info
+        author = item.get("author", {})
+        author_name = author.get("name", "Unknown")
+        author_url = author.get("linkedinUrl", "")
+
+        # Extract reaction counts by type
+        reaction_types = {}
+        total_likes = 0
+        for reaction in item.get("reactionTypeCounts", []):
+            rtype = reaction.get("type", "LIKE")
+            count = _safe_int(reaction.get("count", 0))
+            reaction_types[rtype] = count
+            total_likes += count
+
+        # Determine media type
+        media_type = "text"
+        if item.get("images"):
+            media_type = "image"
+        elif item.get("documents"):
+            media_type = "document"
+        elif item.get("video"):
+            media_type = "video"
+
         return LinkedInPost(
-            author_name=item.get("authorName", item.get("author", {}).get("name", "Unknown")),
-            author_url=profile_url,
-            text=item.get("text", item.get("postText", "")),
-            posted_at=item.get("postedAt", item.get("publishedAt", "")),
-            likes=_safe_int(item.get("likesCount", item.get("numLikes", 0))),
-            comments=_safe_int(item.get("commentsCount", item.get("numComments", 0))),
-            shares=_safe_int(item.get("sharesCount", item.get("numShares", 0))),
-            media_type=item.get("mediaType", item.get("type", "text")),
-            post_url=item.get("postUrl", item.get("url", "")),
+            author_name=author_name,
+            author_url=author_url,
+            text=item.get("commentary", ""),
+            posted_at=item.get("createdAt", ""),
+            likes=total_likes,
+            comments=_safe_int(item.get("numComments", 0)),
+            shares=_safe_int(item.get("numShares", 0)),
+            impressions=_safe_int(item.get("numImpressions", 0)),
+            media_type=media_type,
+            post_url=item.get("url", ""),
+            reaction_types=reaction_types,
         )
     except (KeyError, TypeError):
         return None
@@ -125,8 +146,10 @@ def save_posts(posts: list[LinkedInPost], output_path: str = "output/scraped_pos
             "likes": p.likes,
             "comments": p.comments,
             "shares": p.shares,
+            "impressions": p.impressions,
             "media_type": p.media_type,
             "post_url": p.post_url,
+            "reaction_types": p.reaction_types,
             "engagement_score": p.engagement_score,
         }
         for p in posts
@@ -149,8 +172,10 @@ def load_posts(input_path: str = "output/scraped_posts.json") -> list[LinkedInPo
             likes=d["likes"],
             comments=d["comments"],
             shares=d["shares"],
+            impressions=d.get("impressions", 0),
             media_type=d.get("media_type", "text"),
             post_url=d.get("post_url", ""),
+            reaction_types=d.get("reaction_types", {}),
         )
         for d in data
     ]
