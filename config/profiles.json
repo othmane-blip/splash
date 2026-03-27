@@ -1,14 +1,12 @@
 {
     "profiles": [
         {
-            "name": "Example Top Voice",
-            "linkedin_url": "https://www.linkedin.com/in/example-profile/",
-            "category": "tech"
+            "name": "Dakota Robertson",
+            "linkedin_url": "https://www.linkedin.com/in/dakotarobertson/",
+            "category": "personal branding"
         }
     ],
     "scrape_settings": {
-        "posts_per_profile": 20,
-        "min_likes_threshold": 50,
-        "lookback_days": 30
+        "posts_per_profile": 20
     }
 }

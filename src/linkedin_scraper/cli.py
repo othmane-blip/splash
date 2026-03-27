@@ -44,8 +44,8 @@ def main():
     analyze_parser.add_argument(
         "--input", default="output/scraped_posts.json", help="Path to scraped posts"
     )
-    analyze_parser.add_argument("--top-n", type=int, default=10, help="Number of top posts to analyze")
-    analyze_parser.add_argument("--min-likes", type=int, default=50, help="Minimum likes threshold")
+    analyze_parser.add_argument("--top-n", type=int, default=5, help="Number of top posts to analyze")
+    analyze_parser.add_argument("--min-likes", type=int, default=0, help="Minimum likes threshold (0 = no filter)")
 
     # generate command
     gen_parser = subparsers.add_parser("generate", help="Generate personalized LinkedIn posts")
@@ -56,8 +56,8 @@ def main():
         "--output", default="output/generated_posts.md", help="Output path for generated posts"
     )
     gen_parser.add_argument("--num-posts", type=int, default=3, help="Number of posts to generate")
-    gen_parser.add_argument("--top-n", type=int, default=10, help="Number of top posts to analyze")
-    gen_parser.add_argument("--min-likes", type=int, default=50, help="Minimum likes threshold")
+    gen_parser.add_argument("--top-n", type=int, default=5, help="Number of top posts to analyze")
+    gen_parser.add_argument("--min-likes", type=int, default=0, help="Minimum likes threshold (0 = no filter)")
 
     # run command (full pipeline)
     run_parser = subparsers.add_parser("run", help="Run the full pipeline (scrape + analyze + generate)")
@@ -65,8 +65,8 @@ def main():
         "--config", default="config/profiles.json", help="Path to profiles config"
     )
     run_parser.add_argument("--num-posts", type=int, default=3, help="Number of posts to generate")
-    run_parser.add_argument("--top-n", type=int, default=10, help="Top posts to analyze")
-    run_parser.add_argument("--min-likes", type=int, default=50, help="Minimum likes threshold")
+    run_parser.add_argument("--top-n", type=int, default=5, help="Top posts to analyze")
+    run_parser.add_argument("--min-likes", type=int, default=0, help="Minimum likes threshold (0 = no filter)")
 
     # schedule command
     schedule_parser = subparsers.add_parser("schedule", help="Run the pipeline on a weekly schedule")
@@ -272,8 +272,8 @@ def cmd_schedule(args):
         class Args:
             config = args.config
             num_posts = 3
-            top_n = 10
-            min_likes = 50
+            top_n = 5
+            min_likes = 0
 
         # In scheduled mode, we scrape and analyze but skip Q&A
         # (uses cached user context or env-based defaults)

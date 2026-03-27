@@ -12,15 +12,14 @@ def rank_posts_by_engagement(posts: list[LinkedInPost]) -> list[LinkedInPost]:
 
 def filter_top_posts(
     posts: list[LinkedInPost],
-    top_n: int = 10,
-    min_likes: int = 50,
+    top_n: int = 5,
+    min_likes: int = 0,
 ) -> list[LinkedInPost]:
     """
     Filter and return the top performing posts.
 
-    1. Remove posts below the minimum likes threshold
-    2. Rank by engagement score
-    3. Return top N posts
+    Ranks all posts by engagement score and returns the top N.
+    Optionally filters by a minimum likes threshold (default: no filter).
     """
     qualified = [p for p in posts if p.likes >= min_likes]
     ranked = rank_posts_by_engagement(qualified)
