@@ -65,13 +65,27 @@ export async function POST(req: NextRequest) {
           content: m.content,
         }));
 
-    // Stream the response
-    const stream = await client.messages.stream({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: chatMessages,
-    });
+    // Stream the response with retry on overload
+    let stream;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        stream = await client.messages.stream({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: chatMessages,
+        });
+        break;
+      } catch (err: unknown) {
+        const isOverloaded = err instanceof Error && (err.message.includes("overloaded") || err.message.includes("529"));
+        if (isOverloaded && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    if (!stream) throw new Error("Failed after retries");
 
     // Return as a readable stream
     const encoder = new TextEncoder();

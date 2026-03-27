@@ -22,6 +22,7 @@ export default function Home() {
   const [profiles, setProfiles] = useState<LinkedInProfile[]>([]);
   const [posts, setPosts] = useState<LinkedInPost[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<LinkedInPost[]>([]);
+  const [chatKey, setChatKey] = useState(0); // key to force chat remount
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -35,7 +36,24 @@ export default function Home() {
 
   function handleConfirmPosts(confirmed: LinkedInPost[]) {
     setSelectedPosts(confirmed);
+    setChatKey((k) => k + 1); // reset chat when new posts confirmed
     setTab("chat");
+  }
+
+  function handleStartOver() {
+    setSelectedPosts([]);
+    setPosts([]);
+    setChatKey((k) => k + 1);
+    setTab("scrape");
+  }
+
+  function handleTabClick(id: TabId) {
+    // Block chat tab if no posts confirmed
+    if (id === "chat" && selectedPosts.length === 0) {
+      setTab("scrape");
+      return;
+    }
+    setTab(id);
   }
 
   if (!loaded) {
@@ -45,6 +63,8 @@ export default function Home() {
       </div>
     );
   }
+
+  const chatLocked = selectedPosts.length === 0;
 
   return (
     <div className="flex h-screen">
@@ -60,27 +80,45 @@ export default function Home() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                tab === t.id
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const locked = t.id === "chat" && chatLocked;
+            return (
+              <button
+                key={t.id}
+                onClick={() => handleTabClick(t.id)}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  tab === t.id
+                    ? "bg-blue-50 text-blue-700"
+                    : locked
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {t.label}
+                {locked && <span className="ml-1 text-[10px] text-gray-300">- confirm posts first</span>}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-gray-200 text-xs space-y-1.5">
           <div className="font-medium text-gray-500 uppercase tracking-wider mb-2">Pipeline Status</div>
           <StatusDot ok={profiles.length > 0} label={`${profiles.length} profiles`} />
           <StatusDot ok={posts.length > 0} label={`${posts.length} posts scraped`} />
-          <StatusDot ok={selectedPosts.length > 0} label={`${selectedPosts.length} posts selected`} />
+          <StatusDot ok={selectedPosts.length > 0} label={selectedPosts.length > 0 ? `${selectedPosts.length} posts confirmed` : "No posts confirmed"} />
         </div>
+
+        {/* Start Over button */}
+        {(posts.length > 0 || selectedPosts.length > 0) && (
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={handleStartOver}
+              className="w-full px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 rounded-lg hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            >
+              Start over
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="flex-1 overflow-y-auto">
@@ -97,6 +135,7 @@ export default function Home() {
           )}
           {tab === "chat" && (
             <Chat
+              key={chatKey}
               posts={posts}
               selectedPosts={selectedPosts}
             />
