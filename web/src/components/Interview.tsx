@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserContext } from "@/lib/types";
 
 const QUESTIONS = [
@@ -20,43 +20,97 @@ interface Props {
 }
 
 export function Interview({ userContext, setUserContext }: Props) {
-  const [answers, setAnswers] = useState<Record<string, string>>(() => {
-    if (!userContext) {
-      return { tone_preference: "professional" } as Record<string, string>;
-    }
-    return {
-      name: userContext.name,
-      role: userContext.role,
-      industry: userContext.industry,
-      expertise_areas: userContext.expertise_areas.join(", "),
-      recent_achievements: userContext.recent_achievements.join(", "),
-      opinions: userContext.opinions.join(", "),
-      target_audience: userContext.target_audience,
-      tone_preference: userContext.tone_preference,
-    } as Record<string, string>;
-  });
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(!userContext);
+  const [answers, setAnswers] = useState<Record<string, string>>(() => contextToAnswers(userContext));
   const [saved, setSaved] = useState(false);
+
+  // Auto-load profile from server config if not already set
+  useEffect(() => {
+    if (userContext) {
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/user-profile")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.profile) {
+          setUserContext(data.profile);
+          setAnswers(contextToAnswers(data.profile));
+        } else {
+          setEditing(true); // No profile yet, show the form
+        }
+      })
+      .catch(() => setEditing(true))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSave() {
     const ctx: UserContext = {
       name: answers.name || "",
       role: answers.role || "",
       industry: answers.industry || "",
-      expertise_areas: (answers.expertise_areas || "").split(",").map((s) => s.trim()).filter(Boolean),
-      recent_achievements: (answers.recent_achievements || "").split(",").map((s) => s.trim()).filter(Boolean),
-      opinions: (answers.opinions || "").split(",").map((s) => s.trim()).filter(Boolean),
+      expertise_areas: splitList(answers.expertise_areas),
+      recent_achievements: splitList(answers.recent_achievements),
+      opinions: splitList(answers.opinions),
       target_audience: answers.target_audience || "",
       tone_preference: answers.tone_preference || "professional",
     };
     setUserContext(ctx);
+    setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
+  if (loading) {
+    return <div className="text-gray-400">Loading profile...</div>;
+  }
+
+  // Profile exists — show summary view
+  if (userContext && !editing) {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold mb-2">About You</h2>
+        <p className="text-gray-500 mb-6">Your profile is saved. This is used to generate personalized posts.</p>
+
+        {saved && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            Profile updated!
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 space-y-4">
+          <ProfileField label="Name" value={userContext.name} />
+          <ProfileField label="Role" value={userContext.role} />
+          <ProfileField label="Industry" value={userContext.industry} />
+          <ProfileField label="Expertise" value={userContext.expertise_areas.join(", ")} />
+          <ProfileField label="Recent achievements" value={userContext.recent_achievements.join(", ")} />
+          <ProfileField label="Opinions & hot takes" value={userContext.opinions.join(", ")} />
+          <ProfileField label="Target audience" value={userContext.target_audience} />
+          <ProfileField label="Tone" value={userContext.tone_preference} />
+        </div>
+
+        <button
+          onClick={() => {
+            setAnswers(contextToAnswers(userContext));
+            setEditing(true);
+          }}
+          className="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+        >
+          Edit Profile
+        </button>
+      </div>
+    );
+  }
+
+  // No profile or editing — show form
   return (
     <div>
       <h2 className="text-2xl font-bold mb-2">Tell Us About Yourself</h2>
-      <p className="text-gray-500 mb-8">Your answers help generate posts that sound authentically like you.</p>
+      <p className="text-gray-500 mb-8">
+        Fill this out once. Your answers are saved and used every time you generate posts.
+      </p>
 
       <div className="space-y-5 max-w-2xl">
         {QUESTIONS.map((q) => (
@@ -97,13 +151,50 @@ export function Interview({ userContext, setUserContext }: Props) {
           </div>
         ))}
 
-        <button
-          onClick={handleSave}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          {saved ? "Saved!" : "Save Profile"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Save Profile
+          </button>
+          {userContext && (
+            <button
+              onClick={() => setEditing(false)}
+              className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function ProfileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</dt>
+      <dd className="text-sm text-gray-900 mt-0.5">{value || <span className="text-gray-400 italic">Not set</span>}</dd>
+    </div>
+  );
+}
+
+function contextToAnswers(ctx: UserContext | null): Record<string, string> {
+  if (!ctx) return { tone_preference: "professional" };
+  return {
+    name: ctx.name,
+    role: ctx.role,
+    industry: ctx.industry,
+    expertise_areas: ctx.expertise_areas.join(", "),
+    recent_achievements: ctx.recent_achievements.join(", "),
+    opinions: ctx.opinions.join(", "),
+    target_audience: ctx.target_audience,
+    tone_preference: ctx.tone_preference,
+  };
+}
+
+function splitList(val: string | undefined): string[] {
+  return (val || "").split(",").map((s) => s.trim()).filter(Boolean);
 }
